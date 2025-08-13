@@ -1,100 +1,183 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Breathing Sphere</title>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Breathing Sphere — Portrait TikTok</title>
 <style>
-  body {
-    background: #000;
-    margin: 0;
-    overflow: hidden;
+  html, body { margin:0; background:#000; overflow:hidden; }
+  #c { display:block; margin:0 auto; background:#000; }
+  .ui {
+    position:fixed; right:12px; bottom:12px; display:flex; gap:8px;
+    font-family:system-ui, sans-serif; z-index:10;
   }
-
-  /* Canvas for characters + sphere glow */
-  #gnosticCanvas {
-    position: absolute;
-    top: 0;
-    left: 0;
+  button {
+    background:#0c0c0c; color:#dff; border:1px solid #133; padding:10px 14px;
+    border-radius:10px; cursor:pointer; font-weight:600; letter-spacing:.3px;
   }
-
-  /* Sphere image overlay */
-  .sphere{
-    position:absolute;top:50%;left:50%;
-    transform:translate(-50%,-50%);
-    width:300px;height:300px;
-    background-repeat:no-repeat;
-    background-position:center;
-    background-size:contain;
-    pointer-events:none;
-    animation:shimmer 5s infinite ease-in-out;
-  }
-
-
-
-  /* Breathing halo */
-  .halo {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 350px;
-    height: 350px;
-    border-radius: 50%;
-    background: radial-gradient(circle, rgba(0,255,255,0.25) 0%, rgba(0,255,255,0) 70%);
-    transform: translate(-50%, -50%) scale(1);
-    animation: pulse 8s infinite ease-in-out;
-  }
-
-  @keyframes shimmer {
-    0%, 100% { filter: brightness(1) }
-    50% { filter: brightness(1.15) }
-  }
-
-  @keyframes pulse {
-    0%, 100% { transform: translate(-50%, -50%) scale(1) }
-    50% { transform: translate(-50%, -50%) scale(1.1) }
-  }
+  button:disabled { opacity:.6; cursor:not-allowed; }
 </style>
 </head>
 <body>
 
-<canvas id="gnosticCanvas"></canvas>
-<div class="halo"></div>
-<div class="sphere" id="sphere"></div>
+<canvas id="c" width="1080" height="1920"></canvas>
+<div class="ui">
+  <button id="rec15">Record 15s</button>
+  <button id="rec30">Record 30s</button>
+</div>
 
 <script>
-const sphere = document.getElementById('sphere');
+/* ====== Setup ====== */
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+const W = 1080, H = 1920;
 
-// default image
-sphere.style.backgroundImage = "url('sphere.png')";
+/* ====== Assets ====== */
+const sphereImg = new Image(); sphereImg.src = 'sphere.png';
+const sphereBlinkImg = new Image(); sphereBlinkImg.src = 'sphere_blink.png';
 
-function rareBlink() {
-  // swap to warped image
-  sphere.style.backgroundImage = "url('sphere_blink.png')";
-  // brief distortion vibe
-  sphere.style.transition = 'filter 120ms ease, transform 120ms ease';
-  sphere.style.filter = 'contrast(1.25) brightness(1.1) hue-rotate(15deg)';
-  sphere.style.transform = 'translate(-50%, -50%) scale(1.03)';
+/* ====== Parameters ====== */
+const teal = 'rgba(0,255,246,0.85)';
+const red  = 'rgba(255,55,55,0.9)';
+const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz0123456789';
+const streams = [];
+const STREAM_COUNT = 200;
+const PULSE_PERIOD = 8_000; // ms
+let startTime = performance.now();
+let blinkActive = false;
+let nextBlinkAt = scheduleBlink();
+function scheduleBlink(){ return performance.now() + (90_000 + Math.random()*30_000); }
 
-  setTimeout(() => {
-    // back to normal
-    sphere.style.backgroundImage = "url('sphere.png')";
-    sphere.style.filter = '';
-    sphere.style.transform = 'translate(-50%, -50%)';
-  }, 150); // ~3–5 frames at 60fps
-
-  scheduleNextBlink();
+/* ====== Build streams ====== */
+function newStream() {
+  return {
+    x: Math.random()*W,
+    y: Math.random()*H,
+    speed: 0.35 + Math.random()*0.8,
+    ch: chars[Math.floor(Math.random()*chars.length)],
+    color: Math.random()<0.02 ? red : teal,
+    size: 14 + Math.random()*16,
+    depth: 0.6 + Math.random()*0.8
+  };
 }
+for (let i=0;i<STREAM_COUNT;i++) streams.push(newStream());
 
-function scheduleNextBlink() {
-  const next = (90 + Math.random()*30) * 1000; // 90–120s
-  setTimeout(rareBlink, next);
+/* ====== Audio ====== */
+const AudioCtx = (() => {
+  const ctx = new (window.AudioContext||window.webkitAudioContext)();
+  const hum = ctx.createOscillator(); hum.type = 'sine'; hum.frequency.value = 48;
+  const humGain = ctx.createGain(); humGain.gain.value = 0.04;
+  hum.connect(humGain).connect(ctx.destination); hum.start();
+
+  const chimeGain = ctx.createGain(); chimeGain.gain.value = 0; chimeGain.connect(ctx.destination);
+  function chime() {
+    const o = ctx.createOscillator(); o.type='sine'; o.frequency.value=640;
+    const g = ctx.createGain(); g.gain.value=0.0001;
+    o.connect(g).connect(ctx.destination);
+    o.start();
+    g.gain.linearRampToValueAtTime(0.08, ctx.currentTime+0.05);
+    g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime+0.8);
+    o.stop(ctx.currentTime+0.85);
+  }
+
+  function whisper() {
+    const o = ctx.createOscillator(); o.type='triangle'; o.frequency.value = 210;
+    const g = ctx.createGain(); g.gain.value = 0.0001;
+    o.connect(g).connect(ctx.destination);
+    o.start();
+    g.gain.linearRampToValueAtTime(0.02, ctx.currentTime+0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime+0.3);
+    o.stop(ctx.currentTime+0.35);
+  }
+
+  return { ctx, chime, whisper };
+})();
+
+/* ====== Draw loop ====== */
+function draw(now) {
+  ctx.clearRect(0,0,W,H);
+
+  // Streams
+  streams.forEach(s => {
+    ctx.fillStyle = s.color;
+    ctx.font = `${s.size}px monospace`;
+    ctx.fillText(s.ch, s.x, s.y);
+    s.x += s.speed * s.depth;
+    if (Math.random() < 0.004) {
+      s.ch = chars[Math.floor(Math.random()*chars.length)];
+      if (Math.random()<0.02) { s.color = red; AudioCtx.whisper(); }
+      else s.color = teal;
+    }
+    if (s.x > W + 30) { s.x = -40; s.y = Math.random()*H; }
+  });
+
+  // Breathing halo
+  const phase = (now % PULSE_PERIOD) / PULSE_PERIOD;
+  const scale = 1 + 0.1*Math.sin(phase * Math.PI*2);
+  const cx = W/2, cy = H/2;
+  const radius = W * 0.22 * (1+0.06*Math.sin(phase*Math.PI*2));
+  const grad = ctx.createRadialGradient(cx,cy, radius*0.2, cx,cy, radius*scale);
+  grad.addColorStop(0, 'rgba(0,255,246,0.24)');
+  grad.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = grad;
+  ctx.beginPath(); ctx.arc(cx,cy, radius*scale, 0, Math.PI*2); ctx.fill();
+
+  // Sphere
+  const w = W * 0.34;
+  const img = blinkActive ? sphereBlinkImg : sphereImg;
+  const shimmer = 1 + 0.06*Math.sin(now/900);
+  ctx.save();
+  ctx.globalAlpha = 0.92;
+  ctx.filter = `brightness(${shimmer})`;
+  if (img.complete) ctx.drawImage(img, cx - w/2, cy - w/2, w, w);
+  ctx.restore();
+
+  // Pulse chime
+  if (Math.abs(Math.sin(phase*Math.PI*2)) < 0.002 && (now - (AudioCtx._lastChime||0) > 1200)) {
+    AudioCtx._lastChime = now; AudioCtx.chime();
+  }
+
+  // Blink
+  if (!blinkActive && now >= nextBlinkAt) {
+    blinkActive = true;
+    setTimeout(()=>{ blinkActive = false; nextBlinkAt = scheduleBlink(); }, 150);
+  }
+
+  requestAnimationFrame(draw);
 }
+requestAnimationFrame(draw);
 
-scheduleNextBlink();
+/* ====== Recording ====== */
+async function record(seconds=15){
+  const streamV = canvas.captureStream(30);
+  const dest = AudioCtx.ctx.createMediaStreamDestination();
+  const mixed = new MediaStream([...streamV.getVideoTracks(), ...dest.stream.getAudioTracks()]);
+  const rec = new MediaRecorder(mixed, { mimeType:'video/webm;codecs=vp9,opus', videoBitsPerSecond: 6_000_000 });
+  const chunks = [];
+  rec.ondataavailable = e => e.data.size && chunks.push(e.data);
+  rec.start();
+
+  rec15.disabled = true; rec30.disabled = true;
+  await new Promise(r => setTimeout(r, seconds*1000));
+  rec.stop();
+  await new Promise(r => rec.onstop = r);
+
+  const blob = new Blob(chunks, {type:'video/webm'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `breathing_sphere_portrait_${seconds}s.webm`;
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+  rec15.disabled = false; rec30.disabled = false;
+}
+const rec15 = document.getElementById('rec15');
+const rec30 = document.getElementById('rec30');
+rec15.onclick = ()=>record(15);
+rec30.onclick = ()=>record(30);
+
+window.addEventListener('pointerdown', () => {
+  if (AudioCtx.ctx.state !== 'running') AudioCtx.ctx.resume();
+}, { once:true });
 </script>
-
-
-
 </body>
 </html>
