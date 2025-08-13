@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Breathing Sphere</title>
+<style>
+  body {
+    background: #000;
+    margin: 0;
+    overflow: hidden;
+  }
+
+  /* Canvas for characters + sphere glow */
+  #gnosticCanvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+  }
+
+  /* Sphere image overlay */
+  .sphere {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    width: 300px;
+    height: 300px;
+    background: url('sphere.png') no-repeat center/contain;
+    animation: shimmer 5s infinite ease-in-out;
+  }
+
+  /* Breathing halo */
+  .halo {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 350px;
+    height: 350px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(0,255,255,0.25) 0%, rgba(0,255,255,0) 70%);
+    transform: translate(-50%, -50%) scale(1);
+    animation: pulse 8s infinite ease-in-out;
+  }
+
+  @keyframes shimmer {
+    0%, 100% { filter: brightness(1) }
+    50% { filter: brightness(1.15) }
+  }
+
+  @keyframes pulse {
+    0%, 100% { transform: translate(-50%, -50%) scale(1) }
+    50% { transform: translate(-50%, -50%) scale(1.1) }
+  }
+</style>
+</head>
+<body>
+
+<canvas id="gnosticCanvas"></canvas>
+<div class="halo"></div>
+<div class="sphere" id="sphere"></div>
+
+<script>
+const canvas = document.getElementById('gnosticCanvas');
+const ctx = canvas.getContext('2d');
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+
+const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@#$%&*';
+const teal = '#00fff6';
+const red = '#ff3333';
+let stream = [];
+
+function createStream() {
+  const y = Math.random() * canvas.height;
+  const speed = 0.3 + Math.random() * 0.7;
+  const text = chars.charAt(Math.floor(Math.random() * chars.length));
+  const color = Math.random() < 0.02 ? red : teal;
+  return { x: -50, y, speed, text, color };
+}
+
+function draw() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  stream.forEach(s => {
+    ctx.fillStyle = s.color;
+    ctx.font = '20px monospace';
+    ctx.fillText(s.text, s.x, s.y);
+    s.x += s.speed;
+    if (s.x > canvas.width) {
+      s.x = -50;
+      s.y = Math.random() * canvas.height;
+      s.text = chars.charAt(Math.floor(Math.random() * chars.length));
+      s.color = Math.random() < 0.02 ? red : teal;
+    }
+  });
+  requestAnimationFrame(draw);
+}
+
+for (let i = 0; i < 150; i++) {
+  stream.push(createStream());
+}
+
+draw();
+
+/* Rare blink effect */
+function triggerBlink() {
+  const sphere = document.getElementById('sphere');
+  sphere.style.filter = 'invert(1) hue-rotate(180deg)';
+  setTimeout(() => {
+    sphere.style.filter = '';
+  }, 150); // 3-5 frames equivalent
+  scheduleNextBlink();
+}
+
+function scheduleNextBlink() {
+  const next = (90 + Math.random() * 30) * 1000; // 90–120s
+  setTimeout(triggerBlink, next);
+}
+
+scheduleNextBlink();
+
+/* Handle resize */
+window.addEventListener('resize', () => {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+});
+</script>
+
+</body>
+</html>
