@@ -19,17 +19,17 @@
   }
 
   /* Sphere image overlay */
-  .sphere {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    pointer-events: none;
-    width: 300px;
-    height: 300px;
-    background: url('sphere.png') no-repeat center/contain;
-    animation: shimmer 5s infinite ease-in-out;
+  .sphere{
+    position:absolute;top:50%;left:50%;
+    transform:translate(-50%,-50%);
+    width:300px;height:300px;
+    background-repeat:no-repeat;
+    background-position:center;
+    background-size:contain;
+    pointer-events:none;
+    animation:shimmer 5s infinite ease-in-out;
   }
+
 
   /* Breathing halo */
   .halo {
@@ -62,70 +62,37 @@
 <div class="sphere" id="sphere"></div>
 
 <script>
-const canvas = document.getElementById('gnosticCanvas');
-const ctx = canvas.getContext('2d');
-canvas.width = window.innerWidth;
-canvas.height = window.innerHeight;
+const sphere = document.getElementById('sphere');
 
-const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@#$%&*';
-const teal = '#00fff6';
-const red = '#ff3333';
-let stream = [];
+// default image
+sphere.style.backgroundImage = "url('sphere.png')";
 
-function createStream() {
-  const y = Math.random() * canvas.height;
-  const speed = 0.3 + Math.random() * 0.7;
-  const text = chars.charAt(Math.floor(Math.random() * chars.length));
-  const color = Math.random() < 0.02 ? red : teal;
-  return { x: -50, y, speed, text, color };
-}
+function rareBlink() {
+  // swap to warped image
+  sphere.style.backgroundImage = "url('sphere_blink.png')";
+  // brief distortion vibe
+  sphere.style.transition = 'filter 120ms ease, transform 120ms ease';
+  sphere.style.filter = 'contrast(1.25) brightness(1.1) hue-rotate(15deg)';
+  sphere.style.transform = 'translate(-50%, -50%) scale(1.03)';
 
-function draw() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  stream.forEach(s => {
-    ctx.fillStyle = s.color;
-    ctx.font = '20px monospace';
-    ctx.fillText(s.text, s.x, s.y);
-    s.x += s.speed;
-    if (s.x > canvas.width) {
-      s.x = -50;
-      s.y = Math.random() * canvas.height;
-      s.text = chars.charAt(Math.floor(Math.random() * chars.length));
-      s.color = Math.random() < 0.02 ? red : teal;
-    }
-  });
-  requestAnimationFrame(draw);
-}
-
-for (let i = 0; i < 150; i++) {
-  stream.push(createStream());
-}
-
-draw();
-
-/* Rare blink effect */
-function triggerBlink() {
-  const sphere = document.getElementById('sphere');
-  sphere.style.filter = 'invert(1) hue-rotate(180deg)';
   setTimeout(() => {
+    // back to normal
+    sphere.style.backgroundImage = "url('sphere.png')";
     sphere.style.filter = '';
-  }, 150); // 3-5 frames equivalent
+    sphere.style.transform = 'translate(-50%, -50%)';
+  }, 150); // ~3–5 frames at 60fps
+
   scheduleNextBlink();
 }
 
 function scheduleNextBlink() {
-  const next = (90 + Math.random() * 30) * 1000; // 90–120s
-  setTimeout(triggerBlink, next);
+  const next = (90 + Math.random()*30) * 1000; // 90–120s
+  setTimeout(rareBlink, next);
 }
 
 scheduleNextBlink();
-
-/* Handle resize */
-window.addEventListener('resize', () => {
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
-});
 </script>
+
 
 </body>
 </html>
