@@ -33,9 +33,18 @@ const ctx = canvas.getContext('2d', { alpha:false });
 const W = 1080, H = 1920;
 
 /* ---------- Assets (transparent) ---------- */
-const sphereImg = new Image(); sphereImg.src = 'sphere_transparent.png';
-const sphereBlinkImg = new Image(); sphereBlinkImg.src = 'sphere_blink_transparent.png';
-const watermarkImg = new Image(); watermarkImg.src = 'sphere_transparent.png';
+const sphereImg = new Image();        sphereImg.src = 'sphere_transparent.png?v=3';
+const sphereBlinkImg = new Image();   sphereBlinkImg.src = 'sphere_blink_transparent.png?v=3';
+const watermarkImg = new Image();     watermarkImg.src = 'sphere_transparent.png?v=3';
+function dbg(msg){ console.log(msg); document.title = msg; }
+sphereImg.onload = () => dbg('sphere OK');
+sphereImg.onerror = () => dbg('sphere MISSING');
+
+sphereBlinkImg.onload = () => dbg('blink OK');
+sphereBlinkImg.onerror = () => dbg('blink MISSING');
+
+watermarkImg.onload = () => dbg('wm OK');
+watermarkImg.onerror = () => dbg('wm MISSING');
 
 /* ---------- Visual params ---------- */
 const teal = 'rgba(0,255,246,0.85)';
