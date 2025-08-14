@@ -6,7 +6,14 @@
 <title>Breathing Sphere — Portrait TikTok</title>
 <style>
   html, body { margin:0; background:#000; overflow:hidden; }
-  #c { display:block; margin:0 auto; background:#000; }
+#c {
+  display: block;
+  margin: 0 auto;
+  background: #000;
+  height: 100vh;   /* fit full browser height */
+  width: auto;     /* keep 9:16 aspect */
+}
+
   .ui {
     position:fixed; right:12px; bottom:12px; display:flex; gap:8px;
     font-family:system-ui, sans-serif; z-index:10;
